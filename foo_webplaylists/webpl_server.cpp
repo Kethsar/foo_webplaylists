@@ -45,57 +45,12 @@ void webpl_server::get_playlist(const httplib::Request& req, httplib::Response& 
 	Playlist pl;
 	std::mutex mtx;
 	std::condition_variable cv;
-	std::string pl_index = req.matches[1].str();
+	std::string pl_index_str = req.matches[1].str();
 	bool finished = false;
 
-	fb2k::inMainThread([&] {
-		std::unique_lock<std::mutex> lck(mtx);
-
-		pfc::string8 buf;
-		static_api_ptr_t<playlist_manager_v4> pm;
-		t_size index;
-
-		if (pl_index.length() == 0)
-			index = pm->get_active_playlist();
-		else
-			index = std::stoi(pl_index);
-
-		auto item_count = pm->playlist_get_item_count(index);
-
-		pl.playlist_index = index;
-		pl.tracks.reserve(item_count);
-
-		pm->playlist_get_name(index, buf);
-		pl.playlist_name = buf.get_ptr();
-
-		if (item_count < 10000) {
-			for (t_size i = 0; i < item_count; i++) {
-				PlaylistTrack pt;
-				pt.index = i;
-
-				pm->playlist_item_format_title(index, i, nullptr, buf,
-					fmt_artist, nullptr, playback_control::display_level_none);
-				pt.track.artist = buf.get_ptr();
-
-				pm->playlist_item_format_title(index, i, nullptr, buf,
-					fmt_title, nullptr, playback_control::display_level_none);
-				pt.track.title = buf.get_ptr();
-
-				pm->playlist_item_format_title(index, i, nullptr, buf,
-					fmt_length, nullptr, playback_control::display_level_none);
-				pt.track.length = buf.get_ptr();
-
-				pm->playlist_item_format_title(index, i, nullptr, buf,
-					fmt_seperator, nullptr, playback_control::display_level_none);
-				pt.seperator = buf.get_ptr();
-
-				pl.tracks.push_back(pt);
-			}
-		}
-
-		finished = true;
-		cv.notify_one();
-	});
+	auto f = std::bind(get_playlist_data, std::cref(pl_index_str), std::ref(pl), std::ref(fmt_artist), std::ref(fmt_title),
+		std::ref(fmt_length), std::ref(fmt_seperator), std::ref(mtx), std::ref(cv), std::ref(finished));
+	fb2k::inMainThread(f);
 
 	std::unique_lock<std::mutex> lck(mtx);
 	cv.wait(lck, [&] { return finished; });

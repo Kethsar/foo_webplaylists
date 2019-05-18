@@ -6,9 +6,14 @@
 
 void get_lib_query_items(const char* query, metadb_handle_list_ref list);
 void remove_duplicates(const t_size pl_index, std::mutex &mtx, std::condition_variable &cv, bool &finished);
-void copy_playlist_tracks(const t_size to_index, const t_size from_index, const std::vector<t_size> &track_indexes, std::mutex &mtx, std::condition_variable &cv, bool &finished);
+void copy_playlist_tracks(const t_size to_index, const t_size from_index, const std::vector<t_size> &track_indexes,
+	std::mutex &mtx, std::condition_variable &cv, bool &finished);
 void get_playlists(std::vector<Playlist> &playlists, std::mutex &mtx, std::condition_variable &cv, bool &finished);
-void move_playlist_items(const t_size pl_index, std::vector<t_size> &track_indexes, const t_size move_to, std::mutex &mtx, std::condition_variable &cv, bool &finished);
+void get_playlist_data(const std::string &pl_index_str, Playlist &playlist, titleformat_object_wrapper &fmt_artist,
+	titleformat_object_wrapper &fmt_title, titleformat_object_wrapper &fmt_length, titleformat_object_wrapper &fmt_seperator,
+	std::mutex &mtx, std::condition_variable &cv, bool &finished);
+void move_playlist_items(const t_size pl_index, std::vector<t_size> &track_indexes, const t_size move_to, std::mutex &mtx,
+	std::condition_variable &cv, bool &finished);
 
 class webpl_libman_callback : public library_manager::enum_callback {
 public:

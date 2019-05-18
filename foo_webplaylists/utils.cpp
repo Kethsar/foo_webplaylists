@@ -47,7 +47,8 @@ void remove_duplicates(const t_size pl_index, std::mutex &mtx, std::condition_va
 	cv.notify_one();
 }
 
-void copy_playlist_tracks(const t_size to_index, const t_size from_index, const std::vector<t_size> &track_indexes, std::mutex &mtx, std::condition_variable &cv, bool &finished) {
+void copy_playlist_tracks(const t_size to_index, const t_size from_index, const std::vector<t_size> &track_indexes,
+	std::mutex &mtx, std::condition_variable &cv, bool &finished) {
 	std::unique_lock<std::mutex> lck(mtx);
 
 	static_api_ptr_t<playlist_manager_v4> pm;
@@ -86,7 +87,59 @@ void get_playlists(std::vector<Playlist> &playlists, std::mutex &mtx, std::condi
 	cv.notify_one();
 }
 
-void move_playlist_items(const t_size pl_index, std::vector<t_size> &track_indexes, const t_size move_to, std::mutex &mtx, std::condition_variable &cv, bool &finished) {
+void get_playlist_data(const std::string &pl_index_str, Playlist &playlist,	titleformat_object_wrapper &fmt_artist,
+	titleformat_object_wrapper &fmt_title, titleformat_object_wrapper &fmt_length, titleformat_object_wrapper &fmt_seperator,
+	std::mutex &mtx, std::condition_variable &cv, bool &finished) {
+	std::unique_lock<std::mutex> lck(mtx);
+
+	pfc::string8 buf;
+	static_api_ptr_t<playlist_manager_v4> pm;
+	t_size index;
+
+	if (pl_index_str.length() == 0)
+		index = pm->get_active_playlist();
+	else
+		index = std::stoi(pl_index_str);
+
+	auto item_count = pm->playlist_get_item_count(index);
+
+	playlist.playlist_index = index;
+	playlist.tracks.reserve(item_count);
+
+	pm->playlist_get_name(index, buf);
+	playlist.playlist_name = buf.get_ptr();
+
+	if (item_count < 10000) {
+		for (t_size i = 0; i < item_count; i++) {
+			PlaylistTrack pt;
+			pt.index = i;
+
+			pm->playlist_item_format_title(index, i, nullptr, buf,
+				fmt_artist, nullptr, playback_control::display_level_none);
+			pt.track.artist = buf.get_ptr();
+
+			pm->playlist_item_format_title(index, i, nullptr, buf,
+				fmt_title, nullptr, playback_control::display_level_none);
+			pt.track.title = buf.get_ptr();
+
+			pm->playlist_item_format_title(index, i, nullptr, buf,
+				fmt_length, nullptr, playback_control::display_level_none);
+			pt.track.length = buf.get_ptr();
+
+			pm->playlist_item_format_title(index, i, nullptr, buf,
+				fmt_seperator, nullptr, playback_control::display_level_none);
+			pt.seperator = buf.get_ptr();
+
+			playlist.tracks.push_back(pt);
+		}
+	}
+
+	finished = true;
+	cv.notify_one();
+}
+
+void move_playlist_items(const t_size pl_index, std::vector<t_size> &track_indexes, const t_size move_to, std::mutex &mtx,
+	std::condition_variable &cv, bool &finished) {
 	std::unique_lock<std::mutex> lck(mtx);
 
 	static_api_ptr_t<playlist_manager_v4> pm;
