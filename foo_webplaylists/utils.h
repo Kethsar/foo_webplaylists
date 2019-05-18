@@ -4,7 +4,9 @@
 #include <condition_variable>
 #include "webpl_structs.h"
 
-void get_lib_query_items(const char* query, metadb_handle_list_ref list);
+void get_lib_query_items(const char* query, std::vector<LibraryTrack> &libtracks, titleformat_object_wrapper &fmt_artist,
+	titleformat_object_wrapper &fmt_title, titleformat_object_wrapper &fmt_length, std::mutex &mtx,
+	std::condition_variable &cv, bool &finished);
 void remove_duplicates(const t_size pl_index, std::mutex &mtx, std::condition_variable &cv, bool &finished);
 void copy_playlist_tracks(const t_size to_index, const t_size from_index, const std::vector<t_size> &track_indexes,
 	std::mutex &mtx, std::condition_variable &cv, bool &finished);

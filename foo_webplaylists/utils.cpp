@@ -1,7 +1,11 @@
 #include "stdafx.h"
 #include "utils.h"
 
-void get_lib_query_items(const char* query, metadb_handle_list_ref list) {
+void get_lib_query_items(const char* query, std::vector<LibraryTrack> &libtracks, titleformat_object_wrapper &fmt_artist,
+	titleformat_object_wrapper &fmt_title, titleformat_object_wrapper &fmt_length, std::mutex &mtx,
+	std::condition_variable &cv, bool &finished) {
+	std::unique_lock<std::mutex> lck(mtx);
+
 	metadb_handle_list handles;
 	webpl_libman_callback cb(handles);
 	static_api_ptr_t<library_manager> lm;
@@ -13,13 +17,32 @@ void get_lib_query_items(const char* query, metadb_handle_list_ref list) {
 
 	filter->test_multi(handles, matches);
 
+	pfc::string8 buf;
 	for (t_size i = 0, c = handles.get_count(); i < c; i++) {
 		if (!matches[i]) continue;
 
-		list.add_item(handles[i]);
+		LibraryTrack lt;
+		auto meta = handles[i];
+
+		meta->format_title(nullptr, buf, fmt_artist, nullptr);
+		lt.track.artist = buf.get_ptr();
+
+		meta->format_title(nullptr, buf, fmt_title, nullptr);
+		lt.track.title = buf.get_ptr();
+
+		meta->format_title(nullptr, buf, fmt_length, nullptr);
+		lt.track.length = buf.get_ptr();
+
+		lt.sub_index = meta->get_subsong_index();
+		lt.path = meta->get_path();
+
+		libtracks.push_back(lt);
 	}
 
 	delete[] matches;
+
+	finished = true;
+	cv.notify_one();
 }
 
 void remove_duplicates(const t_size pl_index, std::mutex &mtx, std::condition_variable &cv, bool &finished) {

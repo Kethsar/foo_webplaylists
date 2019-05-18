@@ -116,35 +116,9 @@ void webpl_server::post_query_library(const httplib::Request& req, httplib::Resp
 	auto query = data.at("q").get<std::string>();
 	bool finished = false;
 
-	fb2k::inMainThread([&] {
-		std::unique_lock<std::mutex> lck(mtx);
-
-		pfc::string8 buf;
-		metadb_handle_list handles;
-		get_lib_query_items(query.c_str(), handles);
-
-		for (t_size i = 0, c = handles.get_count(); i < c; i++) {
-			LibraryTrack lt;
-			auto meta = handles[i];
-
-			meta->format_title(nullptr, buf, fmt_artist, nullptr);
-			lt.track.artist = buf.get_ptr();
-
-			meta->format_title(nullptr, buf, fmt_title, nullptr);
-			lt.track.title = buf.get_ptr();
-
-			meta->format_title(nullptr, buf, fmt_length, nullptr);
-			lt.track.length = buf.get_ptr();
-
-			lt.sub_index = meta->get_subsong_index();
-			lt.path = meta->get_path();
-
-			libtracks.push_back(lt);
-		}
-
-		finished = true;
-		cv.notify_one();
-	});
+	auto f = std::bind(get_lib_query_items, query.c_str(), std::ref(libtracks), std::ref(fmt_artist),
+		std::ref(fmt_title), std::ref(fmt_length), std::ref(mtx), std::ref(cv), std::ref(finished));
+	fb2k::inMainThread(f);
 
 	std::unique_lock<std::mutex> lck(mtx);
 	cv.wait(lck, [&] { return finished; });
