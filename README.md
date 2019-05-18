@@ -28,9 +28,9 @@ You will need Visual Studio and the latest available [WTL](http://wtl.sourceforg
 ##### GET requests
 - [x] Playlist Names
 - [x] Playlist Data (limit of 10k songs or send nothing)
-- [x] Libray query
 
 ##### POST requests
+- [x] Libray query
 - [x] Moving playlist items {"playlist": index, "tracks": [indexes], "move_to": index}
 - [x] Copy songs from one playlist to another { "to": index, "from": { "index": index, "tracks": [indexes] }}
 - [ ] Copy songs from media library query to playlist { "playlist": index, "tracks": [{"path": path, "sub_index": si}] }
