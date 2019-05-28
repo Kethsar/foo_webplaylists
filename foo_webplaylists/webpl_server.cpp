@@ -34,6 +34,9 @@ void webpl_server::register_server_endpoints() {
 	m_server.Post("/api/playlist/copy_tracks",
 		std::bind(&webpl_server::post_copy_playlist_tracks, this, std::placeholders::_1, std::placeholders::_2));
 
+	m_server.Post("/api/playlist/copy_libtracks",
+		std::bind(&webpl_server::post_copy_libtracks_to_playlist, this, std::placeholders::_1, std::placeholders::_2));
+
 	m_server.Post("/api/playlist/remove/duplicates",
 		std::bind(&webpl_server::post_remove_duplicates, this, std::placeholders::_1, std::placeholders::_2));
 
@@ -180,6 +183,67 @@ void webpl_server::post_copy_playlist_tracks(const httplib::Request& req, httpli
 	res.set_content(j.dump(), "application/json");
 }
 
+void webpl_server::post_copy_libtracks_to_playlist(const httplib::Request& req, httplib::Response& res) {
+	try {
+		if (req.body.length() == 0) {
+			json e;
+			e["error"] = "Missing request data";
+			res.set_content(e.dump(), "application/json");
+			return;
+		}
+
+		auto data = json::parse(req.body);
+		if (!data.contains("playlist") || !data.contains("tracks")) {
+			json e;
+			e["error"] = "Malformed request; Missing 'playlist' or 'tracks' keys";
+			res.set_content(e.dump(), "application/json");
+			return;
+		}
+
+		auto tracks = data["tracks"];
+		if (!tracks.is_array()) {
+			json e;
+			e["error"] = "Malformed request; 'tracks' key does not appear to be an array";
+			res.set_content(e.dump(), "application/json");
+			return;
+		}
+
+		std::mutex mtx;
+		std::condition_variable cv;
+		bool finished = false;
+		auto pl_index = data.at("playlist").get<t_size>();
+		std::vector<LibraryTrack> libtracks;
+
+		for (const auto &ele : tracks) {
+			if (ele.contains("path")) {
+				LibraryTrack lt;
+
+				ele.at("path").get_to(lt.path);
+				if (ele.contains("sub_index"))
+					ele.at("sub_index").get_to(lt.sub_index);
+
+				libtracks.push_back(lt);
+			}
+		}
+
+		auto f = std::bind(copy_libtracks_to_playlist, pl_index, std::cref(libtracks), std::ref(mtx), std::ref(cv), std::ref(finished));
+		fb2k::inMainThread(f);
+
+		std::unique_lock<std::mutex> lck(mtx);
+		cv.wait(lck, [&] { return finished; });
+	}
+	catch (const std::exception &err) {
+		json e;
+		e["error"] = err.what();
+		res.set_content(e.dump(), "application/json");
+		return;
+	}
+
+	json j;
+	j["success"] = true;
+	res.set_content(j.dump(), "application/json");
+}
+
 void webpl_server::post_remove_duplicates(const httplib::Request& req, httplib::Response& res) {
 	try {
 		if (req.body.length() == 0) {
@@ -243,7 +307,7 @@ void webpl_server::post_remove_playlist_items(const httplib::Request& req, httpl
 		auto index = data.at("playlist").get<t_size>();
 		auto tracks = data.at("tracks").get<std::vector<t_size>>();
 
-		auto f = std::bind(remove_playlist_items, index, std::ref(tracks), std::ref(mtx), std::ref(cv), std::ref(finished));
+		auto f = std::bind(remove_playlist_items, index, std::cref(tracks), std::ref(mtx), std::ref(cv), std::ref(finished));
 		fb2k::inMainThread(f);
 
 		std::unique_lock<std::mutex> lck(mtx);

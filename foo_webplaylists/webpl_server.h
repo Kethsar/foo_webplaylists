@@ -25,6 +25,7 @@ private:
 	void post_remove_duplicates(const httplib::Request& req, httplib::Response& res);
 	void post_move_playlist_items(const httplib::Request& req, httplib::Response& res);
 	void post_remove_playlist_items(const httplib::Request& req, httplib::Response& res);
+	void post_copy_libtracks_to_playlist(const httplib::Request& req, httplib::Response& res);
 
 	httplib::Server m_server;
 	std::thread m_thread;

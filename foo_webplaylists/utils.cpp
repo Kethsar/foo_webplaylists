@@ -192,7 +192,7 @@ void move_playlist_items(const t_size pl_index, std::vector<t_size> &track_index
 	cv.notify_one();
 }
 
-void remove_playlist_items(const t_size pl_index, std::vector<t_size> &track_indexes, std::mutex &mtx,
+void remove_playlist_items(const t_size pl_index, const std::vector<t_size> &track_indexes, std::mutex &mtx,
 	std::condition_variable &cv, bool &finished) {
 	std::unique_lock<std::mutex> lck(mtx);
 
@@ -204,6 +204,29 @@ void remove_playlist_items(const t_size pl_index, std::vector<t_size> &track_ind
 	}
 
 	pm->playlist_remove_items(pl_index, table);
+
+	finished = true;
+	cv.notify_one();
+}
+
+void copy_libtracks_to_playlist(const t_size pl_index, const std::vector<LibraryTrack> &libtracks, std::mutex &mtx,
+	std::condition_variable &cv, bool &finished) {
+	std::unique_lock<std::mutex> lck(mtx);
+
+	static_api_ptr_t<playlist_manager_v4> pm;
+	static_api_ptr_t<metadb> mdb;
+	metadb_handle_list metalist;
+
+	// Almost certain this should be using playlist_incoming_item_filter_v2::process_locations_async
+	// But that has no option for the sub index
+	for (const auto &lt : libtracks) {
+		make_playable_location ploc(lt.path.c_str(), lt.sub_index);
+		auto metah = mdb->handle_create(ploc);
+		metalist.add_item(metah);
+	}
+
+	// Possibly make this playlist_insert_items and add an at_index param
+	pm->playlist_add_items(pl_index, metalist, pfc::bit_array_true());
 
 	finished = true;
 	cv.notify_one();

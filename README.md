@@ -33,8 +33,8 @@ You will need Visual Studio and the latest available [WTL](http://wtl.sourceforg
 - [x] Libray query
 - [x] Moving playlist items {"playlist": index, "tracks": [indexes], "move_to": index}
 - [x] Copy songs from one playlist to another { "to": index, "from": { "index": index, "tracks": [indexes] }}
-- [ ] Copy songs from media library query to playlist { "playlist": index, "tracks": [{"path": path, "sub_index": si}] }
-- [ ] Remove songs from playlist { "playlist": index, "tracks": [indexes] } 
+- [x] Copy songs from media library query to playlist { "playlist": index, "tracks": [{"path": path, "sub_index": si}] }
+- [x] Remove songs from playlist { "playlist": index, "tracks": [indexes] } 
 - [x] Remove duplicates for playlist { "playlist": index }
 		
 ### HTML front-end
