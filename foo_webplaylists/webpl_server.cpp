@@ -37,6 +37,9 @@ void webpl_server::register_server_endpoints() {
 	m_server.Post("/api/playlist/remove/duplicates",
 		std::bind(&webpl_server::post_remove_duplicates, this, std::placeholders::_1, std::placeholders::_2));
 
+	m_server.Post("/api/playlist/remove",
+		std::bind(&webpl_server::post_remove_playlist_items, this, std::placeholders::_1, std::placeholders::_2));
+
 	m_server.Post("/api/playlist/move",
 		std::bind(&webpl_server::post_move_playlist_items, this, std::placeholders::_1, std::placeholders::_2));
 }
@@ -200,6 +203,47 @@ void webpl_server::post_remove_duplicates(const httplib::Request& req, httplib::
 		auto index = data.at("playlist").get<t_size>();
 
 		auto f = std::bind(remove_duplicates, index, std::ref(mtx), std::ref(cv), std::ref(finished));
+		fb2k::inMainThread(f);
+
+		std::unique_lock<std::mutex> lck(mtx);
+		cv.wait(lck, [&] { return finished; });
+	}
+	catch (const std::exception &err) {
+		json e;
+		e["error"] = err.what();
+		res.set_content(e.dump(), "application/json");
+		return;
+	}
+
+	json j;
+	j["success"] = true;
+	res.set_content(j.dump(), "application/json");
+}
+
+void webpl_server::post_remove_playlist_items(const httplib::Request& req, httplib::Response& res) {
+	try {
+		if (req.body.length() == 0) {
+			json e;
+			e["error"] = "Missing request data";
+			res.set_content(e.dump(), "application/json");
+			return;
+		}
+
+		auto data = json::parse(req.body);
+		if (!data.contains("playlist") || !data.contains("tracks")) {
+			json e;
+			e["error"] = "Malformed request; Missing 'playlist' or 'tracks' key";
+			res.set_content(e.dump(), "application/json");
+			return;
+		}
+
+		std::mutex mtx;
+		std::condition_variable cv;
+		bool finished = false;
+		auto index = data.at("playlist").get<t_size>();
+		auto tracks = data.at("tracks").get<std::vector<t_size>>();
+
+		auto f = std::bind(remove_playlist_items, index, std::ref(tracks), std::ref(mtx), std::ref(cv), std::ref(finished));
 		fb2k::inMainThread(f);
 
 		std::unique_lock<std::mutex> lck(mtx);

@@ -16,6 +16,8 @@ void get_playlist_data(const std::string &pl_index_str, Playlist &playlist, titl
 	std::mutex &mtx, std::condition_variable &cv, bool &finished);
 void move_playlist_items(const t_size pl_index, std::vector<t_size> &track_indexes, const t_size move_to, std::mutex &mtx,
 	std::condition_variable &cv, bool &finished);
+void remove_playlist_items(const t_size pl_index, std::vector<t_size> &track_indexes, std::mutex &mtx,
+	std::condition_variable &cv, bool &finished);
 
 class webpl_libman_callback : public library_manager::enum_callback {
 public:

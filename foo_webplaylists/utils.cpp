@@ -191,3 +191,20 @@ void move_playlist_items(const t_size pl_index, std::vector<t_size> &track_index
 	finished = true;
 	cv.notify_one();
 }
+
+void remove_playlist_items(const t_size pl_index, std::vector<t_size> &track_indexes, std::mutex &mtx,
+	std::condition_variable &cv, bool &finished) {
+	std::unique_lock<std::mutex> lck(mtx);
+
+	static_api_ptr_t<playlist_manager_v4> pm;
+	pfc::bit_array_bittable table(pm->playlist_get_item_count(pl_index));
+
+	for (const auto i : track_indexes) {
+		table.set(i, true);
+	}
+
+	pm->playlist_remove_items(pl_index, table);
+
+	finished = true;
+	cv.notify_one();
+}
